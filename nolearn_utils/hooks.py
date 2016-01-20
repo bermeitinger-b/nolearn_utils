@@ -1,9 +1,11 @@
+import pickle
+
 import numpy as np
-import cPickle as pickle
 
 
 class EarlyStopping(object):
     """From https://github.com/dnouri/kfkd-tutorial"""
+
     def __init__(self, patience=50):
         self.patience = patience
         self.best_valid = np.inf
@@ -26,13 +28,14 @@ class EarlyStopping(object):
         elif self.best_valid_epoch + self.patience <= current_epoch:
             print('Early stopping.')
             print('Best valid loss was {:.6f} at epoch {}.'.format(
-                self.best_valid, self.best_valid_epoch))
+                    self.best_valid, self.best_valid_epoch))
             nn.load_weights_from(self.best_weights)
             raise StopIteration()
 
 
 class StepDecay(object):
     """From https://github.com/dnouri/kfkd-tutorial"""
+
     def __init__(self, name, start=0.03, stop=0.001, delay=0):
         self.name = name
         self.delay = delay

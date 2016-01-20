@@ -1,29 +1,29 @@
 from __future__ import division
 from __future__ import print_function
 
-import sys
 import os
-
-import Queue
-import threading
 import random
+import sys
+import threading
 import time
 
+import queue
 import numpy as np
+from joblib import Parallel, delayed
 from numpy.random import choice
-from skimage.io import imread
 from skimage.color import gray2rgb
-from skimage.transform import resize
-from skimage.transform import SimilarityTransform
-from skimage.transform import AffineTransform
-from skimage.transform import warp
-from skimage.filters import rank
-from skimage.morphology import disk
+from skimage.exposure import adjust_gamma
 from skimage.exposure import equalize_adapthist
 from skimage.exposure import equalize_hist
-from skimage.exposure import adjust_gamma
+from skimage.filters import rank
+from skimage.io import imread
+from skimage.morphology import disk
+from skimage.transform import AffineTransform
+from skimage.transform import SimilarityTransform
+from skimage.transform import resize
+from skimage.transform import warp
 
-from joblib import Parallel, delayed
+
 # from multiprocessing import Pool
 
 
@@ -81,6 +81,7 @@ class ShuffleBatchIteratorMixin(object):
 
     Shuffle the order of samples
     """
+
     def __iter__(self):
         orig_X, orig_y = self.X, self.y
         self.X, self.y = shuffle(self.X, self.y)
@@ -98,6 +99,7 @@ class RebalanceBatchIteratorMixin(object):
 
     Use the shuffle mixin because this sort the samples by y
     """
+
     def __init__(self, rebalance_strength, *args, **kwargs):
         super(RebalanceBatchIteratorMixin, self).__init__(*args, **kwargs)
         self.rebalance_strength = rebalance_strength
@@ -141,6 +143,7 @@ class BufferedBatchIteratorMixin(object):
 
     Should be the last mixin
     """
+
     def __init__(self, buffer_size=2, *args, **kwargs):
         super(BufferedBatchIteratorMixin, self).__init__(*args, **kwargs)
         self.buffer_size = buffer_size
@@ -166,6 +169,7 @@ class AffineTransformBatchIteratorMixin(object):
     Apply affine transform (scale, translate and rotation)
     with a random chance
     """
+
     def __init__(self, affine_p,
                  affine_scale_choices=[1.], affine_translation_choices=[0.],
                  affine_rotation_choices=[0.], affine_shear_choices=[0.],
@@ -204,11 +208,11 @@ class AffineTransformBatchIteratorMixin(object):
             translation_y = choice(self.affine_translation_choices)
             translation_x = choice(self.affine_translation_choices)
             img_transformed, tform = im_affine_transform(
-                Xb[i], return_tform=True,
-                scale=scale, rotation=rotation,
-                shear=shear,
-                translation_y=translation_y,
-                translation_x=translation_x
+                    Xb[i], return_tform=True,
+                    scale=scale, rotation=rotation,
+                    shear=shear,
+                    translation_y=translation_y,
+                    translation_x=translation_x
             )
             Xb_transformed[i] = img_transformed
 
@@ -219,6 +223,7 @@ class RandomCropBatchIteratorMixin(object):
     """
     Randomly crop the image to the desired size
     """
+
     def __init__(self, crop_size, *args, **kwargs):
         super(RandomCropBatchIteratorMixin, self).__init__(*args, **kwargs)
         self.crop_size = crop_size
@@ -245,6 +250,7 @@ class RandomFlipBatchIteratorMixin(object):
     """
     Randomly flip the random horizontally or vertically
     """
+
     def __init__(self, flip_horizontal_p=0.5, flip_vertical_p=0.5, *args, **kwargs):
         super(RandomFlipBatchIteratorMixin, self).__init__(*args, **kwargs)
         self.flip_horizontal_p = flip_horizontal_p
@@ -269,6 +275,7 @@ class ReadImageBatchIteratorMixin(object):
     """
     Read images by file name
     """
+
     def __init__(self, read_image_size, read_image_prefix_path='',
                  read_image_as_gray=False, read_image_as_bc01=True,
                  read_image_as_float32=True,
@@ -319,6 +326,7 @@ class MeanSubtractBatchiteratorMixin(object):
     """
     Subtract training examples by the given mean
     """
+
     def __init__(self, mean=None, *args, **kwargs):
         super(MeanSubtractBatchiteratorMixin, self).__init__(*args, **kwargs)
         self.mean = mean
@@ -333,14 +341,15 @@ class EqualizeHistBatchIteratorMixin(object):
     """
     Simple HIstorgram Equalization. Applied per channel
     """
+
     def __init__(self, *args, **kwargs):
         super(EqualizeHistBatchIteratorMixin, self).__init__(*args, **kwargs)
 
     def transform(self, Xb, yb):
         Xb, yb = super(EqualizeHistBatchIteratorMixin, self).transform(Xb, yb)
         Xb_transformed = np.asarray([
-            [equalize_hist(img_ch) for img_ch in img] for img in Xb
-        ])
+                                        [equalize_hist(img_ch) for img_ch in img] for img in Xb
+                                        ])
         Xb_transformed = Xb_transformed.astype(Xb.dtype)
         return Xb_transformed, yb
 
@@ -349,6 +358,7 @@ class AdjustGammaBatchIteratorMixin(object):
     """
     Brightness permutation
     """
+
     def __init__(self, adjust_gamma_p, adjust_gamma_chocies, *args, **kwargs):
         super(AdjustGammaBatchIteratorMixin, self).__init__(*args, **kwargs)
         self.adjust_gamma_p = adjust_gamma_p
@@ -363,7 +373,7 @@ class AdjustGammaBatchIteratorMixin(object):
             for i in random_idx:
                 gamma = choice(self.adjust_gamma_chocies)
                 Xb_transformed[i] = adjust_gamma(
-                    Xb[i].transpose(1, 2, 0), gamma=gamma
+                        Xb[i].transpose(1, 2, 0), gamma=gamma
                 ).transpose(2, 0, 1)
 
         return Xb_transformed, yb
@@ -373,6 +383,7 @@ class LCNBatchIteratorMixin(object):
     """
     Apply local contrast normalization to images
     """
+
     def __init__(self, lcn_selem=disk(5), *args, **kwargs):
         super(LCNBatchIteratorMixin, self).__init__(*args, **kwargs)
         self.lcn_selem = lcn_selem
@@ -380,9 +391,9 @@ class LCNBatchIteratorMixin(object):
     def transform(self, Xb, yb):
         Xb, yb = super(LCNBatchIteratorMixin, self).transform(Xb, yb)
         Xb_transformed = np.asarray([
-            local_contrast_normalization(x, selem=self.lcn_selem)
-            for x in Xb
-        ])
+                                        local_contrast_normalization(x, selem=self.lcn_selem)
+                                        for x in Xb
+                                        ])
         return Xb_transformed, yb
 
 
@@ -391,6 +402,7 @@ class EqualizeAdaptHistBatchIteratorMixin(object):
     Apply adaptive histogram equalization
     http://scikit-image.org/docs/dev/api/skimage.exposure.html#skimage.exposure.equalize_adapthist
     """
+
     def __init__(self, eqadapthist_ntiles_x=8, eqadapthist_ntiles_y=8,
                  eqadapthist_clip_limit=0.01, eqadapthist_nbins=256, *args, **kwargs):
         super(EqualizeAdaptHistBatchIteratorMixin, self).__init__(*args, **kwargs)
@@ -403,11 +415,11 @@ class EqualizeAdaptHistBatchIteratorMixin(object):
         Xb, yb = super(EqualizeAdaptHistBatchIteratorMixin, self).transform(Xb, yb)
         # TODO doesn't work for greyscale image
         Xb_transformed = np.asarray([
-            equalize_adapthist(img, ntiles_x=self.eqadapthist_ntiles_x,
-                               ntiles_y=self.eqadapthist_ntiles_y,
-                               clip_limit=self.eqadapthist_clip_limit,
-                               nbins=self.eqadapthist_nbins)
-            for img in Xb.transpose(0, 2, 3, 1)])
+                                        equalize_adapthist(img, ntiles_x=self.eqadapthist_ntiles_x,
+                                                           ntiles_y=self.eqadapthist_ntiles_y,
+                                                           clip_limit=self.eqadapthist_clip_limit,
+                                                           nbins=self.eqadapthist_nbins)
+                                        for img in Xb.transpose(0, 2, 3, 1)])
         # Back from b01c to bc01
         Xb_transformed = Xb_transformed.transpose(0, 3, 1, 2).astype(np.float32)
         return Xb_transformed, yb
@@ -432,7 +444,8 @@ def make_buffer_for_iterator(source_gen, buffer_size=2):
     if buffer_size < 2:
         raise RuntimeError("Minimal buffer size is 2!")
 
-    buffer = Queue.Queue(maxsize=buffer_size - 1)
+    buffer = queue.Queue(maxsize=buffer_size - 1)
+
     # the effective buffer size is one less, because the generation process
     # will generate one extra element and block until there is room in the buffer.
 
@@ -451,7 +464,7 @@ def make_buffer_for_iterator(source_gen, buffer_size=2):
 
 def make_buffer_for_iterator_with_thread(gen, n_workers, buffer_size):
     wait_time = 0.02
-    generator_queue = Queue.Queue()
+    generator_queue = queue.Queue()
     _stop = threading.Event()
 
     def generator_task():
@@ -462,7 +475,7 @@ def make_buffer_for_iterator_with_thread(gen, n_workers, buffer_size):
                     generator_queue.put(generator_output)
                 else:
                     time.sleep(wait_time)
-            except (StopIteration, KeyboardInterrupt), e:
+            except (StopIteration, KeyboardInterrupt):
                 _stop.set()
                 return
 
