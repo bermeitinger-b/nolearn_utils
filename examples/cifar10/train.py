@@ -150,4 +150,4 @@ if __name__ == '__main__':
     net.load_params_from('./examples/cifar10/model_weights.pkl')
 
     score = net.score(X_test, y_test)
-    print 'Final score %.4f' % score
+    print('Final score {:.4f}'.format(score))
