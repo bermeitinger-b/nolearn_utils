@@ -2,6 +2,11 @@ import pickle
 
 import numpy as np
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+matplotlib.style.use('ggplot')
+
 
 class EarlyStopping(object):
     """From https://github.com/dnouri/kfkd-tutorial"""
@@ -70,9 +75,6 @@ class PlotTrainingHistory(object):
         self.figsize = figsize
 
     def __call__(self, nn, train_history):
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
 
         valid_accuracy = np.asarray([history['valid_accuracy'] for history in train_history])
         train_loss = np.asarray([history['train_loss'] for history in train_history])
@@ -93,7 +95,7 @@ class PlotTrainingHistory(object):
         plt.plot(valid_accuracy, label='Validation accuracy')
         plt.legend()
 
-        plt.savefig(self.path)
+        plt.savefig(self.path, bbox_inches='tight')
         plt.close()
 
 
