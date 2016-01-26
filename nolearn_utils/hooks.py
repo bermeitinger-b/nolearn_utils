@@ -70,6 +70,8 @@ class PlotTrainingHistory(object):
         self.figsize = figsize
 
     def __call__(self, nn, train_history):
+        import matplotlib
+        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
 
         valid_accuracy = np.asarray([history['valid_accuracy'] for history in train_history])
