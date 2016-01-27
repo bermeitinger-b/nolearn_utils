@@ -30,7 +30,7 @@ from skimage.transform import warp
 class BaseBatchIterator(object):
     def __init__(self, batch_size, shuffle=False, verbose=False):
         self.batch_size = batch_size
-        self.verbose = False
+        self.verbose = verbose
         self.shuffle = shuffle
 
     def __call__(self, X, y=None):
@@ -298,8 +298,7 @@ class ReadImageBatchIteratorMixin(object):
         imgs = np.empty((batch_size, num_channels, h, w), dtype=np.float32)
         for i, path in enumerate(Xb):
             img_fname = os.path.join(self.read_image_prefix_path, path)
-            if self.verbose > 2:
-                print('Reading %s' % img_fname)
+
             img = imread(img_fname,
                          as_grey=self.read_image_as_gray)
 
