@@ -4,7 +4,6 @@ import numpy as np
 
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 matplotlib.style.use('ggplot')
 
 
@@ -15,7 +14,7 @@ class EarlyStopping(object):
         self.patience = patience
         self.best_valid = np.inf
         self.best_valid_epoch = 0
-        self.best_weights = None
+        self.best_params = None
 
     def __call__(self, nn, train_history):
         current_valid = train_history[-1]['valid_loss']
@@ -29,12 +28,12 @@ class EarlyStopping(object):
         if current_valid < self.best_valid:
             self.best_valid = current_valid
             self.best_valid_epoch = current_epoch
-            self.best_weights = [w.get_value() for w in nn.get_all_params()]
+            self.best_params = [w.get_value() for w in nn.get_all_params()]
         elif self.best_valid_epoch + self.patience <= current_epoch:
             print('Early stopping.')
             print('Best valid loss was {:.6f} at epoch {}.'.format(
-                    self.best_valid, self.best_valid_epoch))
-            nn.load_weights_from(self.best_weights)
+                self.best_valid, self.best_valid_epoch))
+            nn.load_params_from(self.best_params)
             raise StopIteration()
 
 
@@ -75,6 +74,7 @@ class PlotTrainingHistory(object):
         self.figsize = figsize
 
     def __call__(self, nn, train_history):
+        import matplotlib.pyplot as plt
 
         valid_accuracy = np.asarray([history['valid_accuracy'] for history in train_history])
         train_loss = np.asarray([history['train_loss'] for history in train_history])
