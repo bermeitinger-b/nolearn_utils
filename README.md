@@ -1,6 +1,6 @@
 # nolearn-utils
 
-[![Build Status](https://travis-ci.org/felixlaumon/nolearn_utils.svg?branch=master)](https://travis-ci.org/felixlaumon/nolearn_utils)
+[![Build Status](https://travis-ci.org/mithrial/nolearn_utils.svg?branch=master)](https://travis-ci.org/mithrial/nolearn_utils)
 
 Iterators and handlers for nolearn.lasagne to allow efficient real-time image augmentation and training progress monitoring
 
