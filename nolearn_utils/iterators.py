@@ -2,6 +2,12 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+
+try:
+    from Queue import Queue
+except ImportError:
+    from queue import Queue
+import threading
 import random
 import sys
 import threading
@@ -94,40 +100,37 @@ class ShuffleBatchIteratorMixin(object):
 
 class RebalanceBatchIteratorMixin(object):
     """
-    Rebalance dataset by undersampling all classes to the least
-    popular class
-
-    Use the shuffle mixin because this sort the samples by y
+    Rebalance samples at each iteration according to the given per-label weights
     """
-
-    def __init__(self, rebalance_strength, *args, **kwargs):
+    def __init__(self, rebalance_weights, *args, **kwargs):
         super(RebalanceBatchIteratorMixin, self).__init__(*args, **kwargs)
-        self.rebalance_strength = rebalance_strength
+        self.rebalance_weights = rebalance_weights
+        self._printed = False
 
     def __iter__(self):
         X, y = self.X, self.y
+        X_orig = X
+        y_orig = y
         assert y.ndim == 1
 
+        n = len(X)
         ydist = np.bincount(y).astype(float) / len(y)
-        ydist = ydist[ydist > 0]
-        new_ydist = np.exp(ydist / self.rebalance_strength)
-        new_ydist = new_ydist / new_ydist.sum()
-        y_target_sizes = (len(y) * new_ydist).astype(int)
+        idx = np.arange(n)
 
-        rebalance_idx = []
-        for i, yval in enumerate(np.unique(y)):
-            yval_n = np.sum(y == yval)
-            target_size = y_target_sizes[i]
+        # Create sampling probablity list based on the target
+        # per-label weights
+        p = np.zeros_like(idx, dtype=float)
+        for dist, (label, target_dist) in zip(ydist, enumerate(self.rebalance_weights)):
+            p[y == label] = target_dist / dist
+        p /= p.sum()
 
-            if yval_n > target_size:
-                rebalance_idx += random.sample(np.where(y == yval)[0], target_size)
-            else:
-                idx = np.where(y == yval)[0]
-                idx = np.repeat(idx, target_size / yval_n)
-                rebalance_idx += idx.tolist()
+        idx = np.random.choice(idx, size=n, p=p)
 
-        X_orig, y_orig = X, y
-        self.X, self.y = X[rebalance_idx], y[rebalance_idx]
+        X = X[idx]
+        y = y[idx]
+
+        assert len(X) == len(X_orig)
+        assert len(y) == len(y_orig)
 
         for res in super(RebalanceBatchIteratorMixin, self).__iter__():
             yield res
@@ -357,23 +360,24 @@ class AdjustGammaBatchIteratorMixin(object):
     """
     Brightness permutation
     """
-
-    def __init__(self, adjust_gamma_p, adjust_gamma_chocies, *args, **kwargs):
+    def __init__(self, adjust_gamma_p, adjust_gamma_chocies=[1.], *args, **kwargs):
         super(AdjustGammaBatchIteratorMixin, self).__init__(*args, **kwargs)
         self.adjust_gamma_p = adjust_gamma_p
         self.adjust_gamma_chocies = adjust_gamma_chocies
 
     def transform(self, Xb, yb):
         Xb, yb = super(AdjustGammaBatchIteratorMixin, self).transform(Xb, yb)
-        Xb_transformed = Xb.copy()
 
         if self.adjust_gamma_p > 0:
+            Xb_transformed = Xb.copy()
             random_idx = get_random_idx(Xb, self.adjust_gamma_p)
             for i in random_idx:
                 gamma = choice(self.adjust_gamma_chocies)
                 Xb_transformed[i] = adjust_gamma(
                         Xb[i].transpose(1, 2, 0), gamma=gamma
                 ).transpose(2, 0, 1)
+        else:
+            Xb_transformed = Xb
 
         return Xb_transformed, yb
 
@@ -443,8 +447,7 @@ def make_buffer_for_iterator(source_gen, buffer_size=2):
     if buffer_size < 2:
         raise RuntimeError("Minimal buffer size is 2!")
 
-    buffer = queue.Queue(maxsize=buffer_size - 1)
-
+    buffer = Queue(maxsize=buffer_size - 1)
     # the effective buffer size is one less, because the generation process
     # will generate one extra element and block until there is room in the buffer.
 
@@ -463,7 +466,7 @@ def make_buffer_for_iterator(source_gen, buffer_size=2):
 
 def make_buffer_for_iterator_with_thread(gen, n_workers, buffer_size):
     wait_time = 0.02
-    generator_queue = queue.Queue()
+    generator_queue = Queue()
     _stop = threading.Event()
 
     def generator_task():
@@ -474,7 +477,7 @@ def make_buffer_for_iterator_with_thread(gen, n_workers, buffer_size):
                     generator_queue.put(generator_output)
                 else:
                     time.sleep(wait_time)
-            except (StopIteration, KeyboardInterrupt):
+            except (StopIteration, KeyboardInterrupt) as e:
                 _stop.set()
                 return
 
