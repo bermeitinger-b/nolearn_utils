@@ -4,7 +4,9 @@ branches:
   only:
     - master
 python:
+  - "3.4"
   - "3.5"
+  - "3.6"
 addons:
   apt:
     packages:
