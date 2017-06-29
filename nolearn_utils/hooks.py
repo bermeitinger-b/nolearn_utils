@@ -2,10 +2,6 @@ import pickle
 
 import numpy as np
 
-import matplotlib
-matplotlib.use('Agg')
-matplotlib.style.use('ggplot')
-
 
 class EarlyStopping(object):
     """From https://github.com/dnouri/kfkd-tutorial"""
@@ -65,38 +61,6 @@ class SaveTrainingHistory(object):
     def __call__(self, nn, train_history):
         with open(self.path, 'wb') as f:
             pickle.dump(train_history, f, -1)
-
-
-class PlotTrainingHistory(object):
-    def __init__(self, path, log_scale=False, figsize=(20, 8)):
-        self.path = path
-        self.log_scale = log_scale
-        self.figsize = figsize
-
-    def __call__(self, nn, train_history):
-        import matplotlib.pyplot as plt
-
-        valid_accuracy = np.asarray([history['valid_accuracy'] for history in train_history])
-        train_loss = np.asarray([history['train_loss'] for history in train_history])
-        valid_loss = np.asarray([history['valid_loss'] for history in train_history])
-
-        plt.figure(figsize=self.figsize)
-
-        plt.subplot(1, 2, 1)
-        plt.title('Loss over time')
-        plt.plot(train_loss, label='Training loss')
-        plt.plot(valid_loss, label='Validation loss')
-        if self.log_scale is True:
-            plt.yscale('log')
-        plt.legend()
-
-        plt.subplot(1, 2, 2)
-        plt.title('Accuracy against training epoch')
-        plt.plot(valid_accuracy, label='Validation accuracy')
-        plt.legend()
-
-        plt.savefig(self.path, bbox_inches='tight')
-        plt.close()
 
 
 def float32(x):
