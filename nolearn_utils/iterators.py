@@ -13,7 +13,6 @@ import sys
 import threading
 import time
 
-import queue
 import numpy as np
 from joblib import Parallel, delayed
 from numpy.random import choice
